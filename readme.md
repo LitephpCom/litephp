@@ -89,6 +89,28 @@ include '../vendor/litephp/LiteWeb.php';
     ];
     ```
 
+### Nginx配置
+
+```nginx
+server {
+    listen       80;
+    server_name  example.website;
+    root   d://wwwroot/{project_name}/www;
+    index  index.html index.htm index.php;
+
+    location / {
+       try_files $uri /index.php$is_args$args;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass   127.0.0.1:9000;
+        fastcgi_index  index.php;
+        fastcgi_param  SCRIPT_FILENAME  $document_root$fastcgi_script_name;
+        include        fastcgi_params;
+    }
+}
+```
+
 ## 框架目录树
 
 ┌&emsp;litephp 框架核心目录
