@@ -62,15 +62,18 @@ include '../vendor/litephp/LiteWeb.php';
 
 - #### 路由说明
 
+    - 支持嵌套路由，即路由组，该模式不支持正则
     - 请求方法 `method` : 优先级 `GET|POST > *`
-    - 路由规则 `rule` : 支持严格URI匹配模式 + 正则匹配模式。正则模式要求符合 `preg_match` 函数传参
+    - 路由规则 `rule` : 支持URI严格匹配模式 + 正则匹配模式。正则模式要求符合 `preg_match` 函数传参
     - 执行方法 `function` : 支持数组或回调函数。数组0标必须是类,1标必须是方法名
     - 正则模式开关 `reg` : 是否启用正则，`true | false`。
 
     ```php
     [
-        # 请求方法=> 路由规则, 执行方法, 正则模式开关
-        ['method'   =>  'rule', 'function', 'true|false'],
+        #非路由组格式：路由规则 => [请求方法,执行方法,正则模式开关],...
+        'rule'  =>  ['method', 'function', ?'true,false'],
+        #路由组格式：父路由 => [ 子路由1 => [ 请求方法, 执行方法 ], 子路由2 => [ 请求方法, 执行方法 ]]
+        'parent'    =>  ['child1'   =>  ['method','function'], 'child2' =>  ['method','function'],...]
         ...
     ]
     ```
@@ -79,13 +82,24 @@ include '../vendor/litephp/LiteWeb.php';
 
     ```php
     return [
-        ['*' => '/index/hello', ['\index\controller\index', 'index'], false],
-        ['get' => '/index', function () {
-            return 'hello world';
-        }, false],
-        ['get' => '#/index/*#', function() {
-            return 'reg ok.';
-        }, true],
+        'index' => [
+            'hello' =>  [
+                'get',function(){
+                    return 'index hello.';
+                }
+            ],
+        ],
+        '/hello' =>  [
+            '*',function(){
+                return 'hello.';
+            }
+        ],
+        '#/index/+#' =>  [
+            'get,post',function(){
+                return 'reg.';
+            },
+            true
+        ],
     ];
     ```
 

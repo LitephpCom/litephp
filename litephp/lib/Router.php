@@ -58,6 +58,11 @@ class Router
     private $func404;
 
     /**
+     * 支持的请求方法
+     */
+    private $_methods = ['GET','POST','*'];
+
+    /**
      * 初始化
      */
     public function __construct()
@@ -111,51 +116,78 @@ class Router
             throw new \Exception('路由错误: 新增处理函数不可用。[' . $method . ' => ' . $rule . ']');
         }
         $method = strtoupper($method);
-        if (!$this->checkMethod($method)) {
-            throw new \Exception('路由错误: 方法非GET,POST或*。[' . $method . ' => ' . $rule . ']');
+        if (!in_array($method, $this->_methods)) {
+            throw new \Exception('路由错误: 请求方法不支持。[' . $method . ' => ' . $rule . ']');
         }
         if (!isset($this->maps[$method])) $this->maps[$method] = [];
-        array_push($this->maps[$method], ['rule' => $rule, 'reg' => $reg ? true : false, 'function' => $func, 'self' => $route]);
+        array_push($this->maps[$method], ['rule' => strtolower($rule), 'reg' => $reg ? true : false, 'function' => $func, 'self' => $route]);
         return $this;
     }
 
     /**
      * 批量增加路由规则
-     * @return self
-     * 格式：[method=>rule,function,reg],...
+     * 非路由组格式：rule => [method,function,reg],...
+     * 路由组格式：rule0 => [ rule1 => [ method, function ]]
+     * [
+     *     'path1' => [
+     *         'path2' =>  [
+     *             'path3' =>  [
+     *                 'get/post/*',function(){}
+     *             ],
+     *         ],
+     *     ],
+     *     'path2' =>  [
+     *         'get/post/*',function(){}
+     *     ],
+     *     '#path3#' =>  [
+     *         'get/post/*',function(){},true
+     *     ],
+     * ];
      */
-    public function pushAll($maps = [])
+    public function pushAll($maps = [], $parent_rule = '')
     {
-        foreach ($maps as $route) {
-            if (!is_array($route) || count($route) < 2) {
-                throw new \Exception('路由错误: 配置规则格式错误。');
+        foreach($maps as $rule => $route) {
+            if (!is_array($route)) {
+                throw new \Exception('路由规则错误: 格式错误。规则：'.$rule);
             }
-            // 兼容 php7.3 以前版本
-            if (!function_exists('array_key_first')) {
-                function array_key_first(array $arr)
-                {
-                    foreach ($arr as $key => $unused) {
-                        return $key;
-                    }
-                    return NULL;
+            # 非路由组规则
+            if (isset($route[0]) && is_string($route[0])) {
+                $methods = $this->parseMethod($route[0]);
+                if (!$methods) {
+                    throw new \Exception('路由规则错误: 请求方法错误。规则：'.$rule);
                 }
+                if (!isset($route[1]) || !LiteCheckFunction($route[1])) {
+                    throw new \Exception('路由规则错误: 方法无非调用。规则：'.$rule);
+                }
+                # 正则判断
+                $is_reg = isset($route[2]) && $route[2] === true ? true : false;
+                if ($is_reg) {
+                    if ($parent_rule) {
+                        # 正则模式，路由组不支持正则
+                        throw new \Exception('路由规则错误: 路由组不支持正则。规则：'.$rule);
+                    }
+                } else {
+                    $rule = $parent_rule . '/' . trim(strtolower($rule),'/');
+                }
+                foreach($methods as $method) {
+                    $this->push($method, $rule, $route[1], $is_reg, $route);
+                }
+                continue;
             }
-            $method = array_key_first($route);
-            $rule = $route[$method];
-            $function = next($route);
-            if ($function === false || !LiteCheckFunction($function)) {
-                throw new \Exception('路由错误: 执行函数(或方法)无法调用。');
-            }
-            $reg = next($route) ? true : false;
-            $this->push($method, $rule, $function, $reg, $route);
+            # 路由组规则
+            $rule = $parent_rule . '/' . trim(strtolower($rule),'/');
+            $this->pushAll($route, $rule);
         }
-        return $this;
     }
+
+    /**
+     * 结息
+     */
 
     /**
      * 路由解析
      * 1. 优先解析GET,POST; 再尝试*
-     * 2. 优先解析严格模式，后正则模式
+     * 2. 按路由配置顺序匹配
      * 3. 匹配 * 方法的规则
      * 4. 匹配 * 方法的 * 规则
      * 5. 以上无法匹配，则解析失败 404
@@ -252,11 +284,20 @@ class Router
 
     /**
      * 检测支持的方法
-     * @return bool
+     * @return bool|array
      */
-    private function checkMethod($method)
+    private function parseMethod($method)
     {
+        $methods = explode(',', $method);
         $arr = ['GET', 'POST', '*'];
-        return in_array(strtoupper($method), $arr);
+        $return = [];
+        foreach($methods as $_method) {
+            $_method = strtoupper($_method);
+            if (!in_array($_method, $arr)) {
+                return false;
+            }
+            $return[] = $_method;
+        }
+        return $return;
     }
 }
