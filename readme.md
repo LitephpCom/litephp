@@ -71,7 +71,7 @@ include '../vendor/litephp/LiteWeb.php';
     ```php
     [
         #非路由组格式：路由规则 => [请求方法,执行方法,正则模式开关],...
-        'rule'  =>  ['method', 'function', ?'true,false'],
+        'rule'  =>  ['method', 'function', ?'true,false'],...
         #路由组格式：父路由 => [ 子路由1 => [ 请求方法, 执行方法 ], 子路由2 => [ 请求方法, 执行方法 ]]
         'parent'    =>  ['child1'   =>  ['method','function'], 'child2' =>  ['method','function'],...]
         ...
@@ -84,18 +84,25 @@ include '../vendor/litephp/LiteWeb.php';
     return [
         'index' => [
             'hello' =>  [
-                'get',function(){
+                'get,post,*',function(){
                     return 'index hello.';
                 }
             ],
         ],
         '/hello' =>  [
-            '*',function(){
-                return 'hello.';
-            }
+            [
+                'get',function(){
+                    return 'get hello.';
+                }
+            ],
+            [
+                'post',function(){
+                    return 'post hello.';
+                }
+            ]
         ],
         '#/index/+#' =>  [
-            'get,post',function(){
+            'get,post,*',function(){
                 return 'reg.';
             },
             true

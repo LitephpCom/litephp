@@ -132,15 +132,19 @@ class Router
      *     'path1' => [
      *         'path2' =>  [
      *             'path3' =>  [
-     *                 'get/post/*',function(){}
+     *                 'get,post',function(){}
      *             ],
      *         ],
      *     ],
-     *     'path2' =>  [
-     *         'get/post/*',function(){}
+     *     'path4' =>  [
+     *         ['get',function(){}],
+     *         ['post',function(){}],
      *     ],
-     *     '#path3#' =>  [
-     *         'get/post/*',function(){},true
+     *     'path5'  =>  [
+     *         '*', function(){}
+     *     ],
+     *     '#path6#' =>  [
+     *         'get,post',function(){},true
      *     ],
      * ];
      */
@@ -150,33 +154,53 @@ class Router
             if (!is_array($route)) {
                 throw new \Exception('路由规则错误: 格式错误。规则：'.$rule);
             }
-            # 非路由组规则
-            if (isset($route[0]) && is_string($route[0])) {
-                $methods = $this->parseMethod($route[0]);
-                if (!$methods) {
-                    throw new \Exception('路由规则错误: 请求方法错误。规则：'.$rule);
-                }
-                if (!isset($route[1]) || !LiteCheckFunction($route[1])) {
-                    throw new \Exception('路由规则错误: 方法无非调用。规则：'.$rule);
-                }
-                # 正则判断
-                $is_reg = isset($route[2]) && $route[2] === true ? true : false;
-                if ($is_reg) {
-                    if ($parent_rule) {
-                        # 正则模式，路由组不支持正则
-                        throw new \Exception('路由规则错误: 路由组不支持正则。规则：'.$rule);
+            $key = LiteArrayKeyFirst($route);
+            if (is_int($key)) {
+                # 非嵌套路由
+                if (is_string($route[0])) {
+                    # 单请求方法规则路由
+                    $methods = $this->parseMethod($route[0]);
+                    if (!$methods) {
+                        throw new \Exception('路由规则错误: 请求方法错误。规则：'.$rule);
+                    }
+                    if (!isset($route[1]) || !LiteCheckFunction($route[1])) {
+                        throw new \Exception('路由规则错误: 方法无非调用。规则：'.$rule);
+                    }
+                    # 正则判断
+                    $is_reg = isset($route[2]) && $route[2] === true ? true : false;
+                    $rule = $is_reg ? $rule : $parent_rule . '/' . trim(strtolower($rule),'/');
+                    foreach($methods as $method) {
+                        $this->push($method, $rule, $route[1], $is_reg, $route);
+                    }
+                } elseif (is_array($route[0])) {
+                    # 多请求方法规则路由
+                    foreach($route as $subRoute) {
+                        $subKey = LiteArrayKeyFirst($subRoute);
+                        if (!is_int($subKey)) {
+                            throw new \Exception('路由规则错误: 同路由多请求方法规则格式错误。规则：'.$rule);
+                        }
+                        $methods = $this->parseMethod($subRoute[0]);
+                        if (!$methods) {
+                            throw new \Exception('路由规则错误: 请求方法错误。规则：'.$rule);
+                        }
+                        if (!isset($subRoute[1]) || !LiteCheckFunction($subRoute[1])) {
+                            throw new \Exception('路由规则错误: 方法无非调用。规则：'.$rule);
+                        }
+                        # 正则判断
+                        $is_reg = isset($subRoute[2]) && $subRoute[2] === true ? true : false;
+                        $rule = $is_reg ? $rule : $parent_rule . '/' . trim(strtolower($rule),'/');
+                        foreach($methods as $method) {
+                            $this->push($method, $rule, $subRoute[1], $is_reg, $subRoute);
+                        }
                     }
                 } else {
-                    $rule = $parent_rule . '/' . trim(strtolower($rule),'/');
+                    throw new \Exception('路由规则错误: 配置格式错误。规则：'.$rule);
                 }
-                foreach($methods as $method) {
-                    $this->push($method, $rule, $route[1], $is_reg, $route);
-                }
-                continue;
+            } else {
+                # 嵌套路由
+                $rule = $parent_rule . '/' . trim(strtolower($rule),'/');
+                $this->pushAll($route, $rule);
             }
-            # 路由组规则
-            $rule = $parent_rule . '/' . trim(strtolower($rule),'/');
-            $this->pushAll($route, $rule);
         }
     }
 
