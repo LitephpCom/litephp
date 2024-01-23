@@ -60,7 +60,7 @@ class Router
     /**
      * 支持的请求方法
      */
-    private $_methods = ['GET','POST','*'];
+    private $_methods = ['GET','POST','HEAD','PUT','DELETE','OPTIONS','TRACE','PATCH','*'];
 
     /**
      * 初始化
@@ -313,11 +313,10 @@ class Router
     private function parseMethod($method)
     {
         $methods = explode(',', $method);
-        $arr = ['GET', 'POST', '*'];
         $return = [];
         foreach($methods as $_method) {
             $_method = strtoupper($_method);
-            if (!in_array($_method, $arr)) {
+            if (!in_array($_method, $this->_methods)) {
                 return false;
             }
             $return[] = $_method;
