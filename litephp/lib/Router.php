@@ -132,7 +132,7 @@ class Router
      *     'path1' => [
      *         'path2' =>  [
      *             'path3' =>  [
-     *                 'get,post',function(){}
+     *                 'get|post',function(){}
      *             ],
      *         ],
      *     ],
@@ -144,7 +144,7 @@ class Router
      *         '*', function(){}
      *     ],
      *     '#path6#' =>  [
-     *         'get,post',function(){},true
+     *         'get|post',function(){},true
      *     ],
      * ];
      */
@@ -312,7 +312,7 @@ class Router
      */
     private function parseMethod($method)
     {
-        $methods = explode(',', $method);
+        $methods = explode('|', $method);
         $return = [];
         foreach($methods as $_method) {
             $_method = strtoupper($_method);

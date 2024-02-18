@@ -84,7 +84,7 @@ include '../vendor/litephp/LiteWeb.php';
     return [
         'index' => [
             'hello' =>  [
-                'get,post,*',function(){
+                'get|post|*',function(){
                     return 'index hello.';
                 }
             ],
@@ -102,7 +102,7 @@ include '../vendor/litephp/LiteWeb.php';
             ]
         ],
         '#/index/+#' =>  [
-            'get,post,*',function(){
+            'get|post|*',function(){
                 return 'reg.';
             },
             true
