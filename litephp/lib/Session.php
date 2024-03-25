@@ -32,10 +32,19 @@ class Session
      */
     public function start($options = [])
     {
-        if (PHP_SESSION_ACTIVE != session_status() && !session_start($options ?: NULL)) {
+        if (!$this->isActive() && !session_start($options ?: NULL)) {
             throw new \ErrorException('Session unable started.');
         }
         return $this;
+    }
+
+    /**
+     * 判断当前会话状态
+     * @return bool
+     */
+    public function isActive()
+    {
+        return PHP_SESSION_ACTIVE == session_status();
     }
 
     /**
@@ -51,7 +60,7 @@ class Session
     /**
      * 获取全部 Session
      */
-    public function ALL($prefix = NULL)
+    public function all($prefix = NULL)
     {
         $this->start();
         return $_SESSION[$prefix ?: $this->_prefix] ?? NULL;
@@ -61,7 +70,7 @@ class Session
      * 设置 Session 值
      * @return self $this
      */
-    public function SET($name, $value = NULL, $prefix = NULL)
+    public function set($name, $value = NULL, $prefix = NULL)
     {
         $this->start();
         if (is_null($prefix)) $prefix = $this->_prefix;
@@ -76,7 +85,7 @@ class Session
      * 删除 Session 值
      * @return self $this
      */
-    public function DEL($name, $prefix = NULL)
+    public function delete($name, $prefix = NULL)
     {
         $this->start();
         if (is_null($prefix)) $prefix = $this->_prefix;
@@ -88,7 +97,7 @@ class Session
      * 删除所有 Session
      * @return self $this
      */
-    public function DEL_ALL($prefix = NULL)
+    public function deleteAll($prefix = NULL)
     {
         $this->start();
         !$prefix and $prefix = $this->_prefix;
@@ -101,7 +110,7 @@ class Session
      * @param bool $destroyCookie
      * @return bool
      */
-    public function DESTROY($destroyCookie = FALSE)
+    public function destroy($destroyCookie = FALSE)
     {
         if ($_SESSION) {
             /**
