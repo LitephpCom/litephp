@@ -1,6 +1,8 @@
 # LitePHP
 LitePHP, A web and shell development framework.
 
+So lite, so pure !
+
 ## 使用
 
 ### 入口文件
