@@ -4,9 +4,9 @@
  * 框架函数库
  */
 
- /**
-  * 检测函数或方法是否可调用
-  */
+/**
+ * 检测函数或方法是否可调用
+ */
 function LiteCheckFunction($function)
 {
     if (is_array($function)) {
@@ -33,4 +33,17 @@ function LiteArrayKeyFirst($array = [])
         }
     }
     return array_key_first($array);
+}
+
+/**
+ * 获取框架PDO单例
+ * @return \litephp\Pdo
+ */
+function LiteDB($dbAlias = 'default')
+{
+    $dbConfig = \LiteWeb::instance()->dbConfig($dbAlias);
+    if (!$dbConfig) {
+        throw new \ErrorException('无法获取数据库配置信息');
+    }
+    return \litephp\Pdo::instance($dbConfig, $dbConfig['username'] ?? NULL, $dbConfig['password'] ?? NULL, $dbConfig['options'] ?? NULL);
 }

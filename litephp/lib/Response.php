@@ -1,7 +1,9 @@
 <?php
+
 /**
  * 响应输出
  */
+
 namespace litephp;
 
 class Response
@@ -45,7 +47,7 @@ class Response
      */
     public function delHeader($header)
     {
-        foreach($this->headers as $k => $v) {
+        foreach ($this->headers as $k => $v) {
             if ($v['header'] == $header) {
                 unset($this->headers[$k]);
             }
@@ -119,6 +121,4 @@ class Response
         if (is_null($response)) return NULL;
         echo (string)$response;
     }
-
-
 }

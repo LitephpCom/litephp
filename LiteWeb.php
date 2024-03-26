@@ -30,7 +30,7 @@ class LiteWeb
      * DEBUG: 开发调试模式，输出错误信息，记录错误+异常日志
      * ONLINE: 日志（线上）模式，不输出任何错误异常信息，但记录到日志
      */
-    private $MODE = 'DEBUG';
+    private $MODE = 'ONLINE';
 
     /**
      * 入口文件
@@ -50,7 +50,7 @@ class LiteWeb
      * 应用（目录）名
      * 同文件夹名称
      */
-    private $APP_NAME = 'index';
+    private $APP_NAME = '';
 
     /**
      * 日志目录 - 绝对路径
@@ -68,7 +68,7 @@ class LiteWeb
      * func_404: 自定义404回调函数
      */
     private $CONFIG = [
-        'mode'          =>  'debug',
+        'mode'          =>  'ONLINE',
         'timezone'      =>  'Asia/Shanghai',
         'log_path'      =>  null,
         'include_files' =>  [],
@@ -122,13 +122,13 @@ class LiteWeb
             }
 
             //获取运行模式
-            $this->MODE = strtoupper($this->CONFIG['mode'] ?? 'DEBUG');
+            $this->MODE = strtoupper($this->CONFIG['mode'] ?? 'ONLINE');
 
             // 设置时区
             $timeZone = $this->CONFIG['timezone'] ?? 'Asia/Shanghai' and date_default_timezone_set($timeZone);
 
             // 创建运行时目录
-            $LOG_PATH = !empty($CONFIG['log_path']) && file_exists($CONFIG['log_path']) ? $CONFIG['log_path'] : $this->PROJECT_DIR . '/logs';
+            $LOG_PATH = !empty($this->CONFIG['log_path']) && file_exists($this->CONFIG['log_path']) ? $this->CONFIG['log_path'] : $this->PROJECT_DIR . '/logs';
             if (!is_dir($LOG_PATH) && (!mkdir($LOG_PATH, 0775, true) || !chmod($LOG_PATH, 0775))) {
                 throw new Exception('错误：日志目录不存在或无权创建。');
             }
@@ -167,6 +167,8 @@ class LiteWeb
                     require_once $includeFile;
                 }
             }
+            # 主动释放变量
+            unset($CONFIG_FILE,$CONFIG,$timeZone,$LOG_PATH,$FUNCTIONS_FILE,$includeFile);
 
             // 载入路由配置
             $Router = \litephp\Router::instance()->init($this->INDEX_FILE, $this->CONFIG['func_404'] ?? null);
@@ -213,16 +215,33 @@ class LiteWeb
     }
 
     /**
-     * 项目的类自动加载函数
+     * 获取数据库配置信息
      */
-    private function _autoload($classname)
+    public function dbConfig($dbAlias = 'default')
     {
-        $classpath = $this->PROJECT_DIR . '/' . str_replace('\\', '/', $classname) . '.php';
-        file_exists($classpath) && (require_once $classpath);
+        static $dbConfig = NULL;
+        # 首次载入项目及应用数据库配置信息
+        if ($dbConfig === NULL) {
+            // 加载项目数据库配置
+            $DATABASES_FILE = $this->PROJECT_DIR . '/databases.php';
+            if (file_exists($DATABASES_FILE) && ($CONFIG = require_once $DATABASES_FILE) && is_array($CONFIG)) {
+                $dbConfig = array_merge($dbConfig, $CONFIG);
+            }
+            // 加载应用数据库配置
+            if ($this->APP_NAME) {
+                $DATABASES_FILE = $this->PROJECT_DIR . '/' . $this->APP_NAME . '/databases.php';
+                if (file_exists($DATABASES_FILE) && ($CONFIG = require_once $DATABASES_FILE) && is_array($CONFIG)) {
+                    $dbConfig = array_merge($dbConfig, $CONFIG);
+                }
+            }
+            # 主动释放变量
+            unset($DATABASES_FILE,$CONFIG);
+        }
+        return $dbConfig[$dbAlias] ?? NULL;
     }
 
     /**
-     * 框架异常处理
+     * 框架 - 自定义异常处理函数
      */
     public function exception($e)
     {
@@ -281,7 +300,7 @@ class LiteWeb
     }
 
     /**
-     * 框架错误处理
+     * 框架 - 自定义错误处理函数
      */
     public function error($severity, $message, $file, $line)
     {
@@ -306,5 +325,14 @@ class LiteWeb
             }
         }
         return 'HTML';
+    }
+
+    /**
+     * 项目的类自动加载函数
+     */
+    private function _autoload($classname)
+    {
+        $classpath = $this->PROJECT_DIR . '/' . str_replace('\\', '/', $classname) . '.php';
+        file_exists($classpath) && (require_once $classpath);
     }
 }
