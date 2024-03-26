@@ -40,7 +40,7 @@ class Router
     /**
      * 路由解析结果
      */
-    public $matched = false;
+    private $matched = false;
 
     /**
      * 解析成功的路由规则
@@ -203,10 +203,15 @@ class Router
             }
         }
     }
-
+    
     /**
-     * 结息
+     * 是否匹配到路由
+     * @return bool
      */
+    public function isMatched()
+    {
+        return !!$this->matched;
+    }
 
     /**
      * 路由解析
@@ -303,7 +308,10 @@ class Router
         }
         $flushContent = ob_get_contents();
         ob_end_clean();
-        return ($flushContent ?: '') . (string)$this->response;
+        if ($flushContent) {
+            $this->response = $flushContent . (string)$this->response;
+        }
+        return $this->response;
     }
 
     /**

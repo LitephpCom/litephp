@@ -10,7 +10,7 @@ LitePHP, A web and shell development framework.
 ```php
 // 载入web框架核心类
 include '../vendor/litephp/LiteWeb.php';
-// 单例模式，调用启动方法。参数：(入口文件,项目绝对路径,应用名)
+// 单例模式，调用启动方法。参数：(入口文件-相对于网站根目录,项目绝对路径,应用名)
 (LiteWeb::instance()->start('index.php', __DIR__ . '/../application', 'index'));
 ```
 
@@ -27,7 +27,7 @@ include '../vendor/litephp/LiteWeb.php';
     ```php
     // 载入 composer 自动加载文件
     include '../vendor/autoload.php';
-    // 单例模式，调用启动方法。参数：(入口文件,项目绝对路径,应用名)
+    // 单例模式，调用启动方法。参数：(入口文件-相对于网站根目录,项目绝对路径,应用名)
     (LiteWeb::instance()->start('index.php', __DIR__ . '/../application', 'index'));
     ```
 
@@ -37,14 +37,13 @@ include '../vendor/litephp/LiteWeb.php';
 
     ```
     mode: 运行模式
-    - Dev: 开发模式，输出错误信息，记录错误+异常日志
+    - DEBUG: 开发模式，输出错误信息，记录错误+异常日志
     - Log: 日志（线上）模式，不输出任何错误异常信息，但记录到日志
     timezone: 时区, Asia/Shanghai
-    runtime: 运行时目录，默认项目目录下的runtime文件夹
-    functions: 官方函数库文件名列表, /functions 目录下除litephp.php文件的其他文件名
-    includes: 用户自定义载入文件列表, 绝对路径
-    exception: 用户自定义异常处理函数 参数：($e, MODE)
-    function404: 用户自定义404回调函数
+    log_path: 日志目录，默认项目目录下的logs文件夹
+    include_files: 用户自定义载入文件列表, 绝对路径
+    func_exception: 用户自定义异常处理函数 参数：($e, MODE)
+    func_404: 用户自定义404回调函数
     ```
 
 - #### 配置示例
@@ -136,11 +135,11 @@ server {
 
 ┌&emsp;litephp 框架核心目录
 
-│&emsp;├&emsp;functions 框架函数库
+│&emsp;├&emsp;includes 框架载入文件目录，如函数库
 
-│&emsp;│&emsp;├ litephp.php 框架核心函数
+│&emsp;│&emsp;├ functions.php 框架核心函数
 
-│&emsp;│&emsp;└ ... 其他函数库
+│&emsp;│&emsp;└ ... 其他框架载入文件
 
 │&emsp;├&emsp;lib 框架核心类
 
@@ -148,9 +147,15 @@ server {
 
 │&emsp;│&emsp;├ Log.php 日志类
 
+│&emsp;│&emsp;├ Request.php 请求操作类
+
 │&emsp;│&emsp;├ Response.php 响应类
 
 │&emsp;│&emsp;├ Router.php 路由类
+
+│&emsp;│&emsp;├ Session.php Session类
+
+│&emsp;│&emsp;├ Template.php 轻量模板类
 
 │&emsp;│&emsp;└ ... 其他类库
 
@@ -190,11 +195,13 @@ server {
 
 │&emsp;&emsp;│&emsp;&emsp;└ ... 其他应用文件
 
-│&emsp;&emsp;├ runtime 项目运行时目录，记录日志等
+│&emsp;&emsp;├ logs 项目日志目录，记录日志等
 
 │&emsp;&emsp;├ config.php 项目配置文件
 
 │&emsp;&emsp;├ routes.php 项目路由规则文件
+
+│&emsp;&emsp;├ functions.php 项目函数库文件
 
 │&emsp;&emsp;└ ... 其他项目文件
 

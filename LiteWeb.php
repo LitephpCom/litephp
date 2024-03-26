@@ -27,10 +27,10 @@ class LiteWeb
 
     /**
      * 运行模式
-     * Dev: 开发模式，输出错误信息，记录错误+异常日志
-     * Log: 日志（线上）模式，不输出任何错误异常信息，但记录到日志
+     * DEBUG: 开发调试模式，输出错误信息，记录错误+异常日志
+     * ONLINE: 日志（线上）模式，不输出任何错误异常信息，但记录到日志
      */
-    private $MODE = 'Log';
+    private $MODE = 'DEBUG';
 
     /**
      * 入口文件
@@ -53,35 +53,27 @@ class LiteWeb
     private $APP_NAME = 'index';
 
     /**
-     * 运行时目录 - 绝对路径
-     * 存放错误异常生成的日志等
+     * 日志目录 - 绝对路径
+     * 存放错误、异常等生成的日志
      */
-    private $RUNTIME_DIR = __DIR__ . '/Application/runtime';
-
-    /**
-     * 404 处理函数
-     * 未匹配到路由时触发
-     */
-    private $FUNC_404;
+    private $LOG_PATH = __DIR__ . '/Application/logs';
 
     /**
      * 框架配置参数
      * mode: 运行模式
      * timezone: 时区
-     * runtime: 运行时目录，默认项目目录下的runtime文件夹
-     * functions: 官方函数库文件名列表
-     * includes: 自定义载入文件列表
-     * exception: 自定义异常处理函数 参数：($e, MODE)
-     * function404: 自定义404回调函数
+     * log_path: 日志目录路径，默认项目目录下的logs文件夹
+     * include_files: 自定义载入文件列表
+     * func_exception: 自定义异常处理函数 参数：($e, MODE)
+     * func_404: 自定义404回调函数
      */
     private $CONFIG = [
-        'mode'          =>  'Log',
+        'mode'          =>  'debug',
         'timezone'      =>  'Asia/Shanghai',
-        'runtime'       =>  '',
-        'functions'     =>  [],
-        'includes'      =>  [],
-        'exception'     =>  null,
-        'function404'   =>  null,
+        'log_path'      =>  null,
+        'include_files' =>  [],
+        'func_exception'    =>  null,
+        'func_404'      =>  null,
     ];
 
     /**
@@ -92,133 +84,132 @@ class LiteWeb
      */
     public function start($INDEX_FILE, $PROJECT_DIR, $APP_NAME = '')
     {
-        // 载入框架函数库
-        require_once __DIR__ . '/litephp/functions/litephp.php';
+        try {
+            // 载入框架函数库
+            require_once __DIR__ . '/litephp/includes/functions.php';
 
-        // 项目的类自动加载
-        spl_autoload_register([$this, '_autoload']);
+            // 项目的类自动加载
+            spl_autoload_register([$this, '_autoload']);
 
-        // 解析入口文件
-        $this->INDEX_FILE = $INDEX_FILE ? ltrim($INDEX_FILE, '/') : basename(get_included_files()[0]);
+            // 解析入口文件
+            $this->INDEX_FILE = $INDEX_FILE ? ltrim($INDEX_FILE, '/') : basename(get_included_files()[0]);
 
-        // 项目目录
-        if (!is_dir($PROJECT_DIR)) {
-            exit('配置项错误：项目目录不存在。');
-        }
-        $this->PROJECT_DIR = realpath($PROJECT_DIR);
-
-        // 应用目录
-        if ($APP_NAME) {
-            if (!is_dir($this->PROJECT_DIR . '/' . $APP_NAME)) {
-                exit('配置项错误：应用目录不存在。');
+            // 项目目录
+            if (!is_dir($PROJECT_DIR)) {
+                throw new Exception('错误：项目目录配置错误。');
             }
-            $this->APP_NAME = $APP_NAME;
-        }
+            $this->PROJECT_DIR = realpath($PROJECT_DIR);
 
-        // 加载项目配置
-        $CONFIG_FILE = $this->PROJECT_DIR . '/config.php';
-        if (file_exists($CONFIG_FILE) && ($CONFIG = require_once $CONFIG_FILE) && is_array($CONFIG)) {
-            $this->CONFIG = array_merge($this->CONFIG, $CONFIG);
-        }
-        // 加载应用配置
-        if ($this->APP_NAME) {
-            $CONFIG_FILE = $this->PROJECT_DIR . '/' . $this->APP_NAME . '/config.php';
+            // 应用目录
+            if ($APP_NAME) {
+                if (!is_dir($this->PROJECT_DIR . '/' . $APP_NAME)) {
+                    throw new Exception('错误：应用目录配置错误。');
+                }
+                $this->APP_NAME = $APP_NAME;
+            }
+
+            // 加载项目配置
+            $CONFIG_FILE = $this->PROJECT_DIR . '/config.php';
             if (file_exists($CONFIG_FILE) && ($CONFIG = require_once $CONFIG_FILE) && is_array($CONFIG)) {
                 $this->CONFIG = array_merge($this->CONFIG, $CONFIG);
             }
-        }
-
-        //获取运行模式
-        $this->MODE = strtoupper($this->CONFIG['mode'] ?? 'Log');
-
-        // 设置时区
-        $timeZone = $this->CONFIG['timezone'] ?? 'Asia/Shanghai' and date_default_timezone_set($timeZone);
-
-        // 创建运行时目录
-        $RUNTIME_DIR = empty($CONFIG['runtime']) ? $this->PROJECT_DIR . '/runtime' : $CONFIG['runtime'];
-        if (!is_dir($RUNTIME_DIR) && (!mkdir($RUNTIME_DIR, 0775, true) || !chmod($RUNTIME_DIR, 0775))) {
-            exit('错误：运行时目录不存在或无权创建。');
-        }
-        $this->RUNTIME_DIR = realpath($RUNTIME_DIR);
-
-        // 创建日志文件夹 - runtime目录下
-        $LOG_PATH = $this->RUNTIME_DIR . ($this->APP_NAME ? '/' . $this->APP_NAME : '') . '/logs';
-        if (!is_dir($LOG_PATH) && (!mkdir($LOG_PATH, 0775, true) || !chmod($LOG_PATH, 0775))) {
-            exit('错误：日志文件夹不存在或无权创建。');
-        }
-
-        // 初始化日志类
-        \litephp\Log::instance()->config($LOG_PATH);
-
-        // 错误异常处理 - 务必在初始化日志类后面
-        $this->MODE == 'LOG' ? ini_set('display_errors', '1') : ini_set('display_errors', '0');
-        set_exception_handler([$this, 'exception']);
-        set_error_handler([$this, 'error']);
-
-        // 加载配置项 - functions
-        if (!empty($this->CONFIG['functions'])) {
-            if (!is_array($this->CONFIG['functions'])) {
-                exit('配置项错误：函数库配置错误。');
-            }
-            foreach ($this->CONFIG['functions'] as $func) {
-                if (!file_exists(__DIR__ . '/functions/' . $func . '.php')) {
-                    exit("配置项错误：函数 ({$func}) 文件不存在。");
+            // 加载应用配置
+            if ($this->APP_NAME) {
+                $CONFIG_FILE = $this->PROJECT_DIR . '/' . $this->APP_NAME . '/config.php';
+                if (file_exists($CONFIG_FILE) && ($CONFIG = require_once $CONFIG_FILE) && is_array($CONFIG)) {
+                    $this->CONFIG = array_merge($this->CONFIG, $CONFIG);
                 }
-                require_once __DIR__ . '/functions/' . $func . '.php';
             }
-        }
 
-        // 自定义加载文件
-        if (!empty($this->CONFIG['includes'])) {
-            if (!is_array($this->CONFIG['includes'])) {
-                exit('配置项错误：自定义加载文件配置错误。');
-            }
-            foreach ($this->CONFIG['includes'] as $include) {
-                if (!file_exists($include)) {
-                    exit("配置项错误：自定义加载文件 (" . basename($path) . ") 不存在。");
-                }
-                require_once $include;
-            }
-        }
+            //获取运行模式
+            $this->MODE = strtoupper($this->CONFIG['mode'] ?? 'DEBUG');
 
-        // 载入路由配置
-        $Router = \litephp\Router::instance()->init($this->INDEX_FILE, $this->CONFIG['function404'] ?? null);
-        if (($ROUTE_FILE = $this->PROJECT_DIR . '/routes.php') && file_exists($ROUTE_FILE) && ($ROUTE_MAPS = require_once $ROUTE_FILE)) {
-            $Router->pushAll($ROUTE_MAPS);
-        }
-        if ($this->APP_NAME && ($ROUTE_FILE = $this->PROJECT_DIR . '/' . $this->APP_NAME . '/routes.php') && file_exists($ROUTE_FILE) && ($ROUTE_MAPS = require_once $ROUTE_FILE)) {
-            $Router->pushAll($ROUTE_MAPS);
-        }
-        // 路由解析
-        try {
-            $Response = \litephp\Response::instance();
-            $res = $Router->parse();
-            if (!$Router->matched) {
-                $Response->clearHeader();
-                $Response->setHeader404();
-                ob_start();
-                switch ($this->httpAccept()) {
-                    case 'JSON':
-                        echo \json_encode([
-                            'code'  =>  404,
-                            'message'   =>  'The Request is illegal.',
-                            'data'  =>  [],
-                        ], JSON_FORCE_OBJECT);
-                        break;
-                    case 'TEXT':
-                        echo 'This page not found.';
-                        break;
-                    default:
-                        include __DIR__ . '/litephp/tpl/404.html.php';
-                }
-                $res = ob_get_contents();
-                ob_end_clean();
+            // 设置时区
+            $timeZone = $this->CONFIG['timezone'] ?? 'Asia/Shanghai' and date_default_timezone_set($timeZone);
+
+            // 创建运行时目录
+            $LOG_PATH = !empty($CONFIG['log_path']) && file_exists($CONFIG['log_path']) ? $CONFIG['log_path'] : $this->PROJECT_DIR . '/logs';
+            if (!is_dir($LOG_PATH) && (!mkdir($LOG_PATH, 0775, true) || !chmod($LOG_PATH, 0775))) {
+                throw new Exception('错误：日志目录不存在或无权创建。');
             }
-        } catch (\litephp\ExitException $e) {
-            $res = $e->getMessage();
+            $this->LOG_PATH = realpath($LOG_PATH);
+
+            // 初始化日志类
+            \litephp\Log::instance()->config($LOG_PATH);
+
+            // 错误异常处理 - 务必在初始化日志类后面
+            $this->MODE == 'DEBUG' ? ini_set('display_errors', '1') : ini_set('display_errors', '0');
+            set_exception_handler([$this, 'exception']);
+            set_error_handler([$this, 'error']);
+
+            // 加载项目函数库文件
+            $FUNCTIONS_FILE = $this->PROJECT_DIR . '/functions.php';
+            if (file_exists($FUNCTIONS_FILE)) {
+                require_once $FUNCTIONS_FILE;
+            }
+            // 加载应用函数库文件
+            if ($this->APP_NAME) {
+                $FUNCTIONS_FILE = $this->PROJECT_DIR . '/' . $this->APP_NAME . '/functions.php';
+                if (file_exists($FUNCTIONS_FILE)) {
+                    require_once $FUNCTIONS_FILE;
+                }
+            }
+
+            // 自定义加载文件
+            if (!empty($this->CONFIG['include_files'])) {
+                if (!is_array($this->CONFIG['include_files'])) {
+                    throw new Exception('错误：无法载入自定义文件列表。');
+                }
+                foreach ($this->CONFIG['include_files'] as $includeFile) {
+                    if (!file_exists($includeFile)) {
+                        throw new Exception("错误：自定义加载文件 (" . basename($includeFile) . ") 不存在。");
+                    }
+                    require_once $includeFile;
+                }
+            }
+
+            // 载入路由配置
+            $Router = \litephp\Router::instance()->init($this->INDEX_FILE, $this->CONFIG['func_404'] ?? null);
+            if (($ROUTE_FILE = $this->PROJECT_DIR . '/routes.php') && file_exists($ROUTE_FILE) && ($ROUTE_MAPS = require_once $ROUTE_FILE)) {
+                $Router->pushAll($ROUTE_MAPS);
+            }
+            if ($this->APP_NAME && ($ROUTE_FILE = $this->PROJECT_DIR . '/' . $this->APP_NAME . '/routes.php') && file_exists($ROUTE_FILE) && ($ROUTE_MAPS = require_once $ROUTE_FILE)) {
+                $Router->pushAll($ROUTE_MAPS);
+            }
+            // 路由解析
+            try {
+                $Response = \litephp\Response::instance();
+                $res = $Router->parse();
+                if (!$Router->isMatched() && !$this->CONFIG['func_404']) {
+                    $Response->clearHeader();
+                    $Response->setHeader404();
+                    ob_start();
+                    switch ($this->httpAccept()) {
+                        case 'JSON':
+                            echo \json_encode([
+                                'code'  =>  404,
+                                'message'   =>  'The Request is illegal.',
+                                'data'  =>  [],
+                            ], JSON_FORCE_OBJECT);
+                            break;
+                        case 'TEXT':
+                            echo 'This page not found.';
+                            break;
+                        default:
+                            include __DIR__ . '/litephp/tpl/404.html.php';
+                    }
+                    $res = ob_get_contents();
+                    ob_end_clean();
+                }
+            } catch (\litephp\ExitException $e) {
+                $res = $e->getMessage();
+            }
+            // 输出
+            $Response->send($res);
+        } catch (\Throwable $e) {
+            $e->getTraceAsString();
+            exit();
         }
-        // 输出
-        $Response->send($res);
     }
 
     /**
@@ -238,9 +229,9 @@ class LiteWeb
         // 记录日志
         $time = time();
         $filename = date('Ymd', $time) . '.log';
-        $content = "\nDATE: " . date('Y/m/d H:i:s', $time) . "\n";
-        $content .= "MSG: " . $e->getMessage() . "\n";
-        $content .= "FILE: " . $e->getFile() . "(" . $e->getLine() . ")\r\n=====详情如下=====\r\n";
+        $content = "Date: " . date('Y/m/d H:i:s', $time) . "\n";
+        $content .= "Msg: " . $e->getMessage() . "\n";
+        $content .= "File: " . $e->getFile() . "(" . $e->getLine() . ")\r\n=====详情如下=====\r\n";
         $traceList = $e->getTrace();
         foreach ($traceList as $trace) {
             $fn = $trace['function'];
@@ -262,12 +253,12 @@ class LiteWeb
                 $content .= "---Args Json End---\n";
             }
         }
-        \litephp\Log::instance()->write($filename, $content);
+        \litephp\Log::instance()->writeLn($filename, $content);
         // 异常处理
-        $func = $this->CONFIG['exception'];
-        if (LiteCheckFunction($func)) {
+        $func = $this->CONFIG['func_exception']??null;
+        if ($func && LiteCheckFunction($func)) {
             call_user_func($func, $e, $this->MODE);
-        } elseif ($this->MODE !== 'LOG') {
+        } elseif ($this->MODE === 'DEBUG') {
             //输出打印错误信息
             ob_clean();
             ob_start();

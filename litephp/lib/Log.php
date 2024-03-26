@@ -29,8 +29,17 @@ class Log
     /**
      * 记录日志
      */
-    public function write($filename, $content)
+    public function write($filename, $content, $flags = 0)
     {
-        file_put_contents($this->LOG_PATH . '/' . $filename, $content, FILE_APPEND);
+        file_put_contents($this->LOG_PATH . '/' . $filename, $content, $flags);
+    }
+
+    /**
+     * 记录日志
+     * 内容追加和换行
+     */
+    public function writeLn($filename, $content)
+    {
+        $this->write($filename, $content. "\r\n", FILE_APPEND);
     }
 }
