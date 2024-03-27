@@ -149,6 +149,8 @@ server {
 
 │&emsp;│&emsp;├ Log.php 日志类
 
+│&emsp;│&emsp;├ Pdo.php 数据库PDO类
+
 │&emsp;│&emsp;├ Request.php 请求操作类
 
 │&emsp;│&emsp;├ Response.php 响应类
@@ -181,7 +183,7 @@ server {
 
 └&emsp;readme.md 框架说明文件
 
-## 推荐部署目录树
+## 推荐项目部署目录树
 
 ┌&emsp;Application 项目目录
 
@@ -194,6 +196,8 @@ server {
 │&emsp;&emsp;│&emsp;&emsp;├ config.php 应用配置文件
 
 │&emsp;&emsp;│&emsp;&emsp;├ routes.php 应用路由规则文件
+
+│&emsp;&emsp;│&emsp;&emsp;├ functions.php 应用函数库文件
 
 │&emsp;&emsp;│&emsp;&emsp;└ ... 其他应用文件
 
