@@ -15,22 +15,35 @@ class Pdo
      * PDO 连接实例
      * @var \PDO
      */
-    private $Pdo;
+    private $PDO;
 
     /**
      * PDOStatement 实例
      * @var \PDOStatement
      */
-    private $PdoStatement;
+    private $PDOStatement;
 
     /**
-     * 数据类型简称
+     * 常用数据类型映射
      */
-    private const FETCH_STYLE = [
+    private const FETCH_MODE = [
         'ARRAY'     =>  \PDO::FETCH_ASSOC,
         'NUM'       =>  \PDO::FETCH_NUM,
-        'OBJECT'    =>  \PDO::FETCH_OBJ,
+        'OBJ'       =>  \PDO::FETCH_OBJ,
         'BOTH'      =>  \PDO::FETCH_BOTH,
+    ];
+
+    /**
+     * 常用参数类型映射
+     */
+    private const PARAM_TYPE = [
+        'BOOL'      =>  \PDO::PARAM_BOOL,
+        'NULL'      =>  \PDO::PARAM_NULL,
+        'INT'       =>  \PDO::PARAM_INT,
+        'STR'       =>  \PDO::PARAM_STR,
+        'LOB'       =>  \PDO::PARAM_LOB,
+        'STMT'      =>  \PDO::PARAM_STMT,
+        'INOUT'     =>  \PDO::PARAM_INPUT_OUTPUT,
     ];
 
     /**
@@ -52,7 +65,34 @@ class Pdo
             $charset = isset($dsnConfig['charset']) ? $dsnConfig['charset'] : 'utf8';
             $dsnConfig = "mysql:dbname={$dsnConfig['dbname']};host={$dsnConfig['host']};port={$port};charset={$charset}";
         }
-        $this->Pdo = new \PDO($dsnConfig, $username??NULL, $password??NULL, $options??NULL);
+        $this->PDO = new \PDO($dsnConfig, $username??NULL, $password??NULL, $options??NULL);
+    }
+
+    /**
+     * 获得 PDO 实列
+     * @return null|\PDO
+     */
+    public function fetchPDO()
+    {
+        return $this->PDO;
+    }
+
+    /**
+     * 获得 PDOStatement 实例
+     * @return null|\PDOStatement
+     */
+    public function fetchPDOStatement()
+    {
+        return $this->PDOStatement;
+    }
+
+    /**
+     * 主动关闭连接
+     */
+    public function close()
+    {
+        $this->PDOStatement = null;
+        $this->PDO = null;
     }
 
     /**
@@ -65,8 +105,8 @@ class Pdo
      */
     public function execute($sql, $bindValue = [], $dataType = [])
     {
-        $this->PdoPrepare($sql)->PdoStatementExecute($bindValue, $dataType);
-        return $this->PdoStatement->rowCount();
+        $this->PDOPrepare($sql)->PDOStatementExecute($bindValue, $dataType);
+        return $this->PDOStatement->rowCount();
     }
 
     /**
@@ -76,7 +116,7 @@ class Pdo
      */
     public function lastInsertId()
     {
-        return $this->Pdo->lastInsertId();
+        return $this->PDO->lastInsertId();
     }
 
     /**
@@ -85,12 +125,12 @@ class Pdo
      * @param string $sql
      * @param array $bindValue
      * @param array $dataType
-     * @param string $fetchStyle
+     * @param string $fetchMode
      */
-    public function query($sql, $bindValue = [], $dataType = [], $fetchStyle = 'array')
+    public function query($sql, $bindValue = [], $dataType = [], $fetchMode = 'array')
     {
-        $this->PdoPrepare($sql)->PdoStatementExecute($bindValue, $dataType);
-        return $this->PdoStatement->fetchAll(self::FETCH_STYLE[strtoupper($fetchStyle)] ?? NULL);
+        $this->PDOPrepare($sql)->PDOStatementExecute($bindValue, $dataType);
+        return $this->PDOStatement->fetchAll(self::FETCH_MODE[strtoupper($fetchMode)] ?? NULL);
     }
 
     /**
@@ -98,12 +138,12 @@ class Pdo
      * @param string $sql
      * @param array $bindValue
      * @param array $dataType
-     * @param string $fetchStyle
+     * @param string $fetchMode
      */
-    public function one($sql, $bindValue = [], $dataType = [], $fetchStyle = 'array')
+    public function fetch($sql, $bindValue = [], $dataType = [], $fetchMode = 'array')
     {
-        $this->PdoPrepare($sql)->PdoStatementExecute($bindValue, $dataType);
-        return $this->PdoStatement->fetch(self::FETCH_STYLE[strtoupper($fetchStyle)] ?? NULL);
+        $this->PDOPrepare($sql)->PDOStatementExecute($bindValue, $dataType);
+        return $this->PDOStatement->fetch(self::FETCH_MODE[strtoupper($fetchMode)] ?? NULL);
     }
 
     /**
@@ -112,8 +152,8 @@ class Pdo
      */
     public function beginTransaction()
     {
-        if (!$this->Pdo->inTransaction()) {
-            return $this->Pdo->beginTransaction();
+        if (!$this->PDO->inTransaction()) {
+            return $this->PDO->beginTransaction();
         }
         return $this;
     }
@@ -124,8 +164,8 @@ class Pdo
      */
     public function commit()
     {
-        if ($this->Pdo->inTransaction()) {
-            return $this->Pdo->commit();
+        if ($this->PDO->inTransaction()) {
+            return $this->PDO->commit();
         }
         return $this;
     }
@@ -136,8 +176,8 @@ class Pdo
      */
     public function rollback()
     {
-        if ($this->Pdo->inTransaction()) {
-            return $this->Pdo->rollBack();
+        if ($this->PDO->inTransaction()) {
+            return $this->PDO->rollBack();
         }
         return $this;
     }
@@ -147,8 +187,8 @@ class Pdo
      */
     public function debugDumpParams()
     {
-        if ($this->PdoStatement) {
-            $this->PdoStatement->debugDumpParams();
+        if ($this->PDOStatement) {
+            $this->PDOStatement->debugDumpParams();
         }
     }
 
@@ -158,17 +198,17 @@ class Pdo
      * @param string $sql
      * @return self $this
      */
-    private function PdoPrepare($sql)
+    private function PDOPrepare($sql)
     {
         try {
-            if (!$this->Pdo || !($this->Pdo instanceof \PDO)) {
+            if (!$this->PDO || !($this->PDO instanceof \PDO)) {
                 throw new \ErrorException('Pdo not an PDO objcect.');
             }
-            $PdoStatement = $this->Pdo->prepare($sql);
-            if ($PdoStatement === FALSE) {
+            $PDOStatement = $this->PDO->prepare($sql);
+            if ($PDOStatement === FALSE) {
                 throw new \ErrorException('PDO prepare failed.');
             }
-            $this->PdoStatement = $PdoStatement;
+            $this->PDOStatement = $PDOStatement;
             return $this;
         } catch (\PDOException $e) {
             throw new \ErrorException($e->getMessage());
@@ -181,40 +221,43 @@ class Pdo
      * @param array $dataType ['key'=>num|str|bool|null]
      * @return self $this
      */
-    private function PdoStatementExecute($bindValue = [], $dataType = [])
+    private function PDOStatementExecute($bindValue = [], $dataType = [])
     {
         if ($bindValue) {
-            $dataTypeMap = ['num' => \PDO::PARAM_INT, 'str' => \PDO::PARAM_STR, 'bool' => \PDO::PARAM_BOOL, 'null' => \PDO::PARAM_NULL];
             foreach ($bindValue as $k => $v) {
                 if (array_key_exists($k, $dataType)) {
-                    $kType = $dataTypeMap[strtolower($dataType[$k])] ?? NULL;
+                    if (array_key_exists(strtoupper($dataType[$k]), self::PARAM_TYPE)) {
+                        $kType = self::PARAM_TYPE[strtoupper($dataType[$k])];
+                    } else {
+                        $kType = $dataType[$k];
+                    }
                 } else {
                     if (is_int($v) || is_float($v)) {
-                        $kType = $dataTypeMap['num'];
+                        $kType = self::PARAM_TYPE['NUM'];
                     } elseif (is_string($v)) {
-                        $kType = $dataTypeMap['str'];
+                        $kType = self::PARAM_TYPE['STR'];
                     } elseif (is_bool($v)) {
-                        $kType = $dataTypeMap['bool'];
+                        $kType = self::PARAM_TYPE['BOOL'];
                     } elseif (is_null($v)) {
-                        $kType = $dataTypeMap['null'];
+                        $kType = self::PARAM_TYPE['NULL'];
                     } else {
-                        $kType = \PDO::PARAM_STR;
+                        $kType = self::PARAM_TYPE['STR'];
                     }
                 }
                 if (is_int($k)) {
-                    $bindRes = $this->PdoStatement->bindValue($k + 1, $v, $kType);
+                    $bindRes = $this->PDOStatement->bindValue($k + 1, $v, $kType);
                 }
                 if (is_string($k)) {
-                    $bindRes = $this->PdoStatement->bindValue($k, $v, $kType);
+                    $bindRes = $this->PDOStatement->bindValue($k, $v, $kType);
                 }
                 if ($bindRes === FALSE) {
-                    $errorInfo = $this->PdoStatement->errorInfo();
+                    $errorInfo = $this->PDOStatement->errorInfo();
                     throw new \ErrorException("PDOStatement bindValue failed. [SQLSTATE] {$errorInfo[0]};[errCode] {$errorInfo[1]};[errInfo] {$errorInfo[2]}");
                 }
             }
         }
-        if ($this->PdoStatement->execute() === FALSE) {
-            $errorInfo = $this->PdoStatement->errorInfo();
+        if ($this->PDOStatement->execute() === FALSE) {
+            $errorInfo = $this->PDOStatement->errorInfo();
             throw new \ErrorException("PDOStatement execute failed. [SQLSTATE] {$errorInfo[0]};[errCode] {$errorInfo[1]};[errInfo] {$errorInfo[2]}");
         }
         return $this;

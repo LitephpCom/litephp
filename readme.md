@@ -145,6 +145,8 @@ server {
 
 │&emsp;├&emsp;lib 框架核心类
 
+│&emsp;│&emsp;├ DbDao.php DAO数据库操作
+
 │&emsp;│&emsp;├ ExitException.php 异常形式输出到页面
 
 │&emsp;│&emsp;├ Log.php 日志类
