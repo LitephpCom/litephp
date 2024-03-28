@@ -232,9 +232,9 @@ class Pdo
                         $kType = $dataType[$k];
                     }
                 } else {
-                    if (is_int($v) || is_float($v)) {
-                        $kType = self::PARAM_TYPE['NUM'];
-                    } elseif (is_string($v)) {
+                    if (is_int($v)) {
+                        $kType = self::PARAM_TYPE['INT'];
+                    } elseif (is_string($v) || is_float($v)) {
                         $kType = self::PARAM_TYPE['STR'];
                     } elseif (is_bool($v)) {
                         $kType = self::PARAM_TYPE['BOOL'];
