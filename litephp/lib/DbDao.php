@@ -7,7 +7,6 @@
 namespace litephp;
 
 use Exception;
-use stdClass;
 
 class DbDao
 {

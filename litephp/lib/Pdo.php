@@ -54,7 +54,7 @@ class Pdo
         if (!$dsnConfig) {
             throw new \ErrorException('pdo dsn not empty.');
         }
-        if (!is_string($dsnConfig) || !is_array($dsnConfig)) {
+        if (!is_string($dsnConfig) && !is_array($dsnConfig)) {
             throw new \ErrorException('pdo dsn data type error.');
         }
         if (is_array($dsnConfig)) {
@@ -65,7 +65,7 @@ class Pdo
             $charset = isset($dsnConfig['charset']) ? $dsnConfig['charset'] : 'utf8';
             $dsnConfig = "mysql:dbname={$dsnConfig['dbname']};host={$dsnConfig['host']};port={$port};charset={$charset}";
         }
-        $this->PDO = new \PDO($dsnConfig, $username??NULL, $password??NULL, $options??NULL);
+        $this->PDO = new \PDO($dsnConfig, $username ?? NULL, $password ?? NULL, $options ?? NULL);
     }
 
     /**
