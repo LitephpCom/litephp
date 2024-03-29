@@ -306,10 +306,22 @@ class http
             $file_name = 'unnamed';
         }
 
+        // 根据文件内容的特征推断MIME类型
+        if (strpos($file_content, "PNG") === 1) {
+            $mime = "image/png";
+        } else if (strpos($file_content, "JFIF") === 6) {
+            $mime = "image/jpeg";
+        } else if (strpos($file_content, "GIF") === 0) {
+            $mime = "image/gif";
+        } else {
+            $mime = "application/octet-stream"; // 默认类型
+        }
+
         // 构建请求内容
         $boundary = uniqid();
         $content = "--$boundary\r\n";
         $content .= "Content-Disposition: form-data; name=\"$paramName\"; filename=\"$file_name\"\r\n";
+        $content .= "Content-Type: " . $mime . "\r\n\r\n";
         $content .= $file_content . "\r\n";
         $content .= "--$boundary--\r\n";
 
