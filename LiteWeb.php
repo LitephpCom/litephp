@@ -8,8 +8,12 @@ spl_autoload_register('autoloadLiteWeb');
 function autoloadLiteWeb($classname)
 {
     if (strpos($classname, 'litephp\\') === 0) {
-        if (($classpath = __DIR__ . '/litephp/' . substr(str_replace('\\', '/', $classname), 8) . '.php') && file_exists($classpath))  require_once $classpath;
-        if (($classpath = __DIR__ . '/litephp/lib/' . substr(str_replace('\\', '/', $classname), 8) . '.php') && file_exists($classpath))  require_once $classpath;
+        $classfile = substr(str_replace('\\', '/', $classname), 8) . '.php';
+        $classdir = ['/litephp/', '/litephp/lib/', '/litephp/toolbox/'];
+        foreach ($classdir as $dir) {
+            $classpath = __DIR__ . $dir . $classfile;
+            if (file_exists($classpath))  require_once $classpath;
+        }
     }
 }
 

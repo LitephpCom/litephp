@@ -165,6 +165,12 @@ server {
 
 │&emsp;│&emsp;└ ... 其他类库
 
+│&emsp;├&emsp;toolbox 工具类库
+
+│&emsp;│&emsp;├ http.php 发起GET、POST、UPLOAD类HTTP请求工具类
+
+│&emsp;│&emsp;└ ... 其他工具类
+
 │&emsp;├&emsp;tpl 框架模板文件
 
 │&emsp;│&emsp;├ 404.html.php 404 错误模板
