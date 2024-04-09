@@ -1,6 +1,6 @@
 <?php
 
-include __DIR__ . '/litephp/includes/autoload.php';
+include __DIR__ . '/litephp/core/Lite.php';
 
 /**
  * 框架类
@@ -45,7 +45,7 @@ class LiteWeb
      * 日志目录 - 绝对路径
      * 存放错误、异常等生成的日志
      */
-    private $LOG_PATH = __DIR__ . '/Application/logs';
+    private $LOG_PATH;
 
     /**
      * 框架配置参数
@@ -73,90 +73,24 @@ class LiteWeb
      */
     public function start($INDEX_FILE, $PROJECT_DIR, $APP_NAME = '')
     {
-        // 载入框架函数库
-        require_once __DIR__ . '/litephp/includes/functions.php';
-
-        // 项目的类自动加载
-        spl_autoload_register([$this, '_autoload']);
-
         // 解析入口文件
         $this->INDEX_FILE = $INDEX_FILE ? ltrim($INDEX_FILE, '/') : basename(get_included_files()[0]);
 
-        // 项目目录
-        if (!is_dir($PROJECT_DIR)) {
-            throw new Exception('错误：项目目录配置错误。');
-        }
-        $this->PROJECT_DIR = realpath($PROJECT_DIR);
+        \litephp\core\Lite::init($PROJECT_DIR, $APP_NAME);
 
-        // 应用目录
-        if ($APP_NAME) {
-            if (!is_dir($this->PROJECT_DIR . '/' . $APP_NAME)) {
-                throw new Exception('错误：应用目录配置错误。');
-            }
-            $this->APP_NAME = $APP_NAME;
-        }
-
-        // 加载项目配置
-        $CONFIG_FILE = $this->PROJECT_DIR . '/config.php';
-        if (file_exists($CONFIG_FILE) && ($CONFIG = require_once $CONFIG_FILE) && is_array($CONFIG)) {
-            $this->CONFIG = array_merge($this->CONFIG, $CONFIG);
-        }
-        // 加载应用配置
-        if ($this->APP_NAME) {
-            $CONFIG_FILE = $this->PROJECT_DIR . '/' . $this->APP_NAME . '/config.php';
-            if (file_exists($CONFIG_FILE) && ($CONFIG = require_once $CONFIG_FILE) && is_array($CONFIG)) {
-                $this->CONFIG = array_merge($this->CONFIG, $CONFIG);
-            }
-        }
-
-        //获取运行模式
-        $this->MODE = strtoupper($this->CONFIG['mode'] ?? 'ONLINE');
-
-        // 设置时区
-        $timeZone = $this->CONFIG['timezone'] ?? 'Asia/Shanghai' and date_default_timezone_set($timeZone);
-
-        // 创建运行时目录
-        $LOG_PATH = !empty($this->CONFIG['log_path']) && file_exists($this->CONFIG['log_path']) ? $this->CONFIG['log_path'] : $this->PROJECT_DIR . '/logs';
-        if (!is_dir($LOG_PATH) && (!mkdir($LOG_PATH, 0775, true) || !chmod($LOG_PATH, 0775))) {
-            throw new Exception('错误：日志目录不存在或无权创建。');
-        }
-        $this->LOG_PATH = realpath($LOG_PATH);
+        $this->PROJECT_DIR = \litephp\core\Lite::PROJECT_DIR();
+        $this->APP_NAME = \litephp\core\Lite::APP_NAME();
+        $this->CONFIG = \litephp\core\Lite::CONFIG();
+        $this->MODE = \litephp\core\Lite::MODE();
+        $this->LOG_PATH = \litephp\core\Lite::LOG_PATH();
 
         // 初始化日志类
-        \litephp\Log::instance()->config($LOG_PATH);
+        \litephp\Log::instance()->config($this->LOG_PATH);
 
         // 错误异常处理 - 务必在初始化日志类后面
         $this->MODE == 'DEBUG' ? ini_set('display_errors', '1') : ini_set('display_errors', '0');
         set_exception_handler([$this, 'exception']);
         set_error_handler([$this, 'error']);
-
-        // 加载项目函数库文件
-        $FUNCTIONS_FILE = $this->PROJECT_DIR . '/functions.php';
-        if (file_exists($FUNCTIONS_FILE)) {
-            require_once $FUNCTIONS_FILE;
-        }
-        // 加载应用函数库文件
-        if ($this->APP_NAME) {
-            $FUNCTIONS_FILE = $this->PROJECT_DIR . '/' . $this->APP_NAME . '/functions.php';
-            if (file_exists($FUNCTIONS_FILE)) {
-                require_once $FUNCTIONS_FILE;
-            }
-        }
-
-        // 自定义加载文件
-        if (!empty($this->CONFIG['include_files'])) {
-            if (!is_array($this->CONFIG['include_files'])) {
-                throw new Exception('错误：无法载入自定义文件列表。');
-            }
-            foreach ($this->CONFIG['include_files'] as $includeFile) {
-                if (!file_exists($includeFile)) {
-                    throw new Exception("错误：自定义加载文件 (" . basename($includeFile) . ") 不存在。");
-                }
-                require_once $includeFile;
-            }
-        }
-        # 主动释放变量
-        unset($CONFIG_FILE, $CONFIG, $timeZone, $LOG_PATH, $FUNCTIONS_FILE, $includeFile);
 
         // 载入路由配置
         $Router = \litephp\Router::instance()->init($this->INDEX_FILE, $this->CONFIG['func_404'] ?? null);

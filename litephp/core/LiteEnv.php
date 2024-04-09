@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 简单的.ENV文件处理
  * .env 文件的格式规范：
@@ -25,12 +26,14 @@
  *  5. **换行符**：不同操作系统对换行符的处理不同，建议在 .env 文件中使用 Unix 风格的换行符（\n）。
  *  6. **敏感信息**：由于 .env 文件通常包含敏感信息，应该妥善保存，不应该公开或提交到版本控制系统中。
  */
+
 namespace litephp\core;
 
 class LiteEnv
 {
-    use \litephp\traits\instance;
-
+    /**
+     * 解析配置内容
+     */
     public static function parse($content = '')
     {
         $result = [];
@@ -38,17 +41,20 @@ class LiteEnv
             return $result;
         }
         $contentLines = explode(PHP_EOL, $content);
-        foreach($contentLines as $lines) {
+        foreach ($contentLines as $lines) {
             $lines = trim($lines);
             # 空行,注释
-            if (!$lines || strpos($lines,'#') !== false || strpos($lines,';') !== false) {
+            if (!$lines || strpos($lines, '#') !== false || strpos($lines, ';') !== false) {
                 continue;
             }
-            $lines = explode('=',$lines);
-
+            $lines = explode('=', $lines);
+            $result[trim($lines[0])] = isset($lines[1]) ? str_replace("'", '', str_replace('"', '', trim($lines[1]))) : NULL;
         }
     }
 
+    /**
+     * 解析配置文件
+     */
     public static function parseByFile($file)
     {
         if (!file_exists($file)) {
