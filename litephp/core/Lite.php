@@ -61,7 +61,7 @@ class Lite
         spl_autoload_register(['\litephp\core\Lite', 'autoload']);
 
         // 载入框架函数库
-        require_once '../litephp/includes/functions.php';
+        require_once dirname(__DIR__) . '/includes/functions.php';
 
         // 项目目录
         if (!is_dir($PROJECT_DIR)) {
@@ -142,7 +142,7 @@ class Lite
     {
         if (strpos($classname, 'litephp\\') === 0) {
             $classfile = substr(str_replace('\\', '/', $classname), 8) . '.php';
-            $classdir = ['/litephp/', '/litephp/lib/', '/litephp/toolbox/', 'litephp/core'];
+            $classdir = ['/', '/lib/', '/toolbox/', '/core/'];
             foreach ($classdir as $dir) {
                 $classpath = dirname(__DIR__) . $dir . $classfile;
                 if (file_exists($classpath))  require_once $classpath;
