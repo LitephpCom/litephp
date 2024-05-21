@@ -40,6 +40,7 @@ class Lite
      * include_files: 自定义载入文件列表
      * func_exception: 自定义异常处理函数 参数：($e, MODE)
      * func_404: 自定义404回调函数
+     * command: 命令行模式，指令与类名映射
      */
     private static $CONFIG = [
         'mode'          =>  'ONLINE',
@@ -48,6 +49,7 @@ class Lite
         'include_files' =>  [],
         'func_exception'    =>  null,
         'func_404'      =>  null,
+        'command'       =>  [],
     ];
 
     /**
