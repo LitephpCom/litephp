@@ -7,6 +7,7 @@ ignore_user_abort(true);
 set_time_limit(0);
 
 include __DIR__ . '/litephp/core/Lite.php';
+include __DIR__ . '/litephp/traits/instance.php';
 
 class LiteCmd
 {
@@ -62,6 +63,11 @@ class LiteCmd
     ];
 
     /**
+     * 原始参数
+     */
+    private $argvRaw = [];
+
+    /**
      * 解析后的参数
      */
     private $argv;
@@ -69,7 +75,7 @@ class LiteCmd
     /**
      * 注册后的指令帮助信息
      * 格式：
-     * cmd => ['name'=>'','description'=>'','options'=>['cmd'=>'','description'=>'']]
+     * cmd => ['name'=>'','description'=>'','options'=>['-t'=>'xxx','-r'=>'xxx']]
      */
     private $CmdHelp = [];
 
@@ -82,20 +88,21 @@ class LiteCmd
      * -P|--project_dir：项目目录，如 -P=/www/,--project_dir=/www/
      * -A|--app_name: 应用目录，如 -A=index
      */
-    public function start()
+    public function start($argv,$argc)
     {
         # 解析参数
-        $this->argv = self::parseArgv();
+        $this->argv = self::parseArgv($argv,$argc);
         if (empty($this->argv['-P']) && empty($this->argv['--project_dir'])) {
             $PROJECT_DIR = getcwd();
         } else {
             $PROJECT_DIR = $this->argv['-P'] ?: $this->argv['--project_dir'];
         }
+        $APP_NAME = '';
         if (!empty($this->argv['-A']) || !empty($this->argv['--app_name'])) {
             $APP_NAME = !empty($this->argv['-A']) ? $this->argv['-A'] : $this->argv['--app_name'];
         }
+        
         \litephp\core\Lite::init($PROJECT_DIR, $APP_NAME);
-
         $this->PROJECT_DIR = \litephp\core\Lite::PROJECT_DIR();
         $this->APP_NAME = \litephp\core\Lite::APP_NAME();
         $this->CONFIG = \litephp\core\Lite::CONFIG();
@@ -110,28 +117,49 @@ class LiteCmd
         set_exception_handler([$this, 'exception']);
         set_error_handler([$this, 'error']);
 
-        // 注册指令，形成帮助文档
-
-        // 输出帮助文档
-        if (isset($this->argv['-h']) || isset($this->argv['--help'])) {
-            if ($this->argv[1]) {
-                exit($this->printHelp($this->argv[1]));
-            }
-            exit($this->printHelp());
-        }
-
-        // 路由解析
         try {
-            
+            if (!isset($this->CONFIG['command']) || !is_array($this->CONFIG['command'])){
+                throw new \Exception('项目 command 配置项错误');
+            }
+            if ($this->argv[1] && !array_key_exists($this->argv[1], $this->CONFIG['command'])){
+                throw new \Exception($this->argv[1].'指令不存在');
+            }
+            // 注册指令，形成帮助文档
+            foreach($this->CONFIG['command'] as $command => $className) {
+                if (!class_exists($className)) {
+                    throw new \Exception($command.' 指令对应的'.$className.'类不存在');
+                }
+                if (!method_exists($className, 'execute')) {
+                    throw new \Exception($command.' 指令对应的'.$className.'类方法execute不存在');
+                }
+                if (property_exists($className, 'CmdHelp')) {
+                    $this->CmdHelp = array_merge($this->CmdHelp, [$command=>$className::$CmdHelp]);
+                }
+            }
+            if (array_key_exists('-h',$this->argv) || array_key_exists('--help',$this->argv)) {
+                // 输出帮助文档
+                if ($this->argv[1]) {
+                    exit($this->printHelp($this->argv[1]));
+                }
+                exit($this->printHelp());
+            } else {
+                // 执行指令
+                if ($this->argv[1]) {
+                    call_user_func([(new $this->CONFIG['command'][$this->argv[1]]),'execute'], $this->argv);
+                }
+            }
         } catch (\litephp\ExitException $e) {
-            $res = $e->getMessage();
+            if ($this->MODE === 'DEBUG') {
+                //输出打印错误信息
+                echo $e->getMessage();
+            }
         }
     }
 
     /**
      * 框架 - 自定义异常处理函数
      */
-    public static function exception($e)
+    public function exception($e)
     {
         // 记录日志
         $time = time();
@@ -174,7 +202,7 @@ class LiteCmd
     /**
      * 框架 - 自定义错误处理函数
      */
-    public static function error($severity, $message, $file, $line)
+    public function error($severity, $message, $file, $line)
     {
         throw new \ErrorException($message, 0, $severity, $file, $line);
     }
@@ -189,8 +217,9 @@ class LiteCmd
      * 3. k=value
      * 4. key
      */
-    public function parseArgv()
+    public function parseArgv($argv,$argc)
     {
+        $this->argvRaw = $argv;
         $_argv = [0=>$argv[0],1=>null];
         # php LiteCmd command -abc
         if ($argc === 0) {
@@ -214,13 +243,13 @@ class LiteCmd
             }
             $key = '';
             $value = null;
-            if (strpos($v,'=') > 0) {
+            if (strpos($v,'=') !== false && strpos($v,'=') > 0) {
                 list($key,$value) = explode('=',$v,2);
             } else {
                 $key = $v;
             }
             # 防止后面参数覆盖脚本和指令名称
-            if ($key == 0 || $key == 1){
+            if ($key === 0 || $key === '0' || $key === 1 || $key === '1'){
                 continue;
             }
             $_argv[$key] = $value;
@@ -234,7 +263,7 @@ class LiteCmd
     public function printHelp($cmd = null)
     {
         if (!$cmd) {
-            $helpStr = "This is a command line LiteCmd script.\r\nUsage:\r\n    php LiteCmd command [-P=Project_Dir] [-A=App_Name] [options] [-h]\r\nComand List:\r\n";
+            $helpStr = "This is a command line LiteCmd script.\r\nUsage:\r\n    php LiteCmd command [-P=Project_Dir] [-A=App_Name] [options] [-h]\r\nComands:\r\n";
             foreach($this->CmdHelp as $cmd => $config) {
                 $helpStr .= "    {$cmd}\t{$config['name']}\t{$config['description']}\r\n";
             }
@@ -244,12 +273,14 @@ class LiteCmd
                 return 'No help information found.';
             } else {
                 $command = $this->CmdHelp[$cmd];
-                $helpStr = "This is a {$cmd} command-line script.\r\nName:\t{$command['name']}\r\nDescription:\t{$command['description']}\r\nUsage:\r\n    php LiteCmd {$cmd} [options] [-h]\r\nComand List:\r\n";
-                foreach($command['options'] as $option){
-                    $helpStr .= "{$option['cmd']}\t{$option['description']}\r\n";
+                $helpStr = "This is a {$cmd} command-line script.\r\nName:\t{$command['name']}\r\nDescription:\t{$command['description']}\r\nUsage:\r\n    php LiteCmd {$cmd} [options] [-h]\r\nOptions:\r\n";
+                foreach($command['options'] as $option => $description){
+                    $helpStr .= "    {$option}\t{$description}\r\n";
                 }
                 return $helpStr;
             }
         }
     }
 }
+
+(LiteCmd::instance()->start($argv,$argc));

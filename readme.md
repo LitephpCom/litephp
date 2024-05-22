@@ -3,7 +3,7 @@ LitePHP, A web and shell development framework.
 
 So lite, so pure !
 
-## 使用
+## web应用场景的使用
 
 ### 入口文件
 
@@ -46,6 +46,7 @@ include '../vendor/litephp/LiteWeb.php';
     include_files: 用户自定义载入文件列表, 绝对路径
     func_exception: 用户自定义异常处理函数 参数：($e, MODE)
     func_404: 用户自定义404回调函数
+    command: 命令行模式，指令与类名的映射关系
     ```
 
 - #### 配置示例
@@ -111,7 +112,41 @@ include '../vendor/litephp/LiteWeb.php';
     ];
     ```
 
-### Nginx配置
+## Shell命令行应用场景
+
+### 配置
+
+> 同web应用场景中的配置
+
+### 指令类文件示例
+
+> 必须要有$CmdHelp静态属性和execute执行方法
+> -h --help 查看帮助信息和使用方法
+
+```php
+class cmd
+{
+    public static $CmdHelp = [
+        'name'  =>  'test指令',
+        'description'   =>  '这是一个测试指令',
+        'options'   =>  [
+            '-t'    =>  '测试参数，返回hello test字符串'
+        ],
+    ];
+
+    public function execute($cmdArgv)
+    {
+        if (array_key_exists('-t',$cmdArgv)) {
+            # 判断某个参数是否传入
+            echo 'hello test';
+        } else {
+            echo 'hello cmd';
+        }
+    }
+}
+```
+
+## Nginx配置
 
 ```nginx
 server {
@@ -137,13 +172,19 @@ server {
 
 ┌&emsp;litephp 框架核心目录
 
+│&emsp;├&emsp;core 框架核心类库
+
+│&emsp;│&emsp;├ Lite.php 核心类，处理类的自动载入，框架配置等
+
+│&emsp;│&emsp;└ ... 其他核心类文件
+
 │&emsp;├&emsp;includes 框架载入文件目录，如函数库
 
 │&emsp;│&emsp;├ functions.php 框架核心函数
 
 │&emsp;│&emsp;└ ... 其他框架载入文件
 
-│&emsp;├&emsp;lib 框架核心类
+│&emsp;├&emsp;lib 框架核心操作类
 
 │&emsp;│&emsp;├ DbDao.php DAO数据库操作
 
@@ -187,7 +228,7 @@ server {
 
 ├&emsp;LiteWeb.php web框架核心类，用于入口文件引入
 
-├&emsp;LiteShell.php 命令行框架核心类，用于shell脚本执行
+├&emsp;LiteCmd 命令行框架核心类，用于命令行脚本执行
 
 └&emsp;readme.md 框架说明文件
 
@@ -230,3 +271,4 @@ server {
 &emsp;&emsp;├ index.php 前台应用入口文件
 
 &emsp;&emsp;└ ... 其他应用入口文件
+

@@ -10,4 +10,7 @@ return [
     'include_files' =>  [],
     'func_exception'    =>  null,
     'func_404'      =>  null,
+    'command'       =>  [
+        'cmd'   =>  '\cmd'
+    ],
 ];

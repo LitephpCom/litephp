@@ -1,6 +1,7 @@
 <?php
 
 include __DIR__ . '/litephp/core/Lite.php';
+include __DIR__ . '/litephp/traits/instance.php';
 
 /**
  * 框架类
