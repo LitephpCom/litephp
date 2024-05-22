@@ -121,6 +121,7 @@ include '../vendor/litephp/LiteWeb.php';
 ### 指令类文件示例
 
 > 必须要有$CmdHelp静态属性和execute执行方法
+
 > -h --help 查看帮助信息和使用方法
 
 ```php
