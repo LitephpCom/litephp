@@ -11,6 +11,6 @@ return [
     'func_exception'    =>  null,
     'func_404'      =>  null,
     'command'       =>  [
-        'cmd'   =>  '\cmd'
+        'cmd'   =>  '\command\cmd'
     ],
 ];

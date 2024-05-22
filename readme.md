@@ -118,11 +118,15 @@ include '../vendor/litephp/LiteWeb.php';
 
 > 同web应用场景中的配置
 
-### 指令类文件示例
+### 创建自定义命令文件
+
+#### 说明
 
 > 必须要有$CmdHelp静态属性和execute执行方法
 
 > -h --help 查看帮助信息和使用方法
+
+#### 示例文件
 
 ```php
 class cmd
@@ -145,6 +149,18 @@ class cmd
         }
     }
 }
+```
+
+### 使用 - 入口文件
+
+**注意下面代码载入LiteCmd文件的路径**
+
+```php
+// 载入shell框架核心类
+include dirname(__DIR__).'/LiteCmd';
+
+// 单例模式，调用启动方法。参数：(传参数组-PHP的全局变量,传参数量-PHP的全局变量)
+(LiteCmd::instance()->start($argv,$argc));
 ```
 
 ## Nginx配置

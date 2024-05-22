@@ -2,6 +2,7 @@
 /**
  * 演示指令类
  */
+namespace command;
 class cmd
 {
     public static $CmdHelp = [
